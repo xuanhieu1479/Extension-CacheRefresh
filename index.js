@@ -73,11 +73,8 @@ function resetTimer() {
 }
 
 /**
- * Wait for the stop button to become visible (meaning the API has started responding),
- * then click it to abort generation and save tokens.
- *
- * If the stop button never appears (e.g. quiet prompts don't show it),
- * the generation completes normally. Cache is still refreshed either way.
+ * Wait for the stop button to appear (meaning the API has started responding
+ * and the cache is warmed), then stop generation after a 1-second safety margin.
  */
 function stopGenerationWhenReady() {
     return new Promise(resolve => {
@@ -87,12 +84,12 @@ function stopGenerationWhenReady() {
         const check = setInterval(() => {
             if ($('#mes_stop').is(':visible')) {
                 clearInterval(check);
-                // Brief delay to ensure at least the first chunk has arrived
+                // Wait 1 second after response starts to ensure cache is fully warmed
                 setTimeout(() => {
                     $('#mes_stop').trigger('click');
-                    console.debug(`[${MODULE_NAME}] Stopped generation after response started`);
+                    console.debug(`[${MODULE_NAME}] Stopped generation 1s after response started`);
                     resolve(true);
-                }, 300);
+                }, 1000);
             } else if (Date.now() - startTime > maxWait) {
                 clearInterval(check);
                 console.debug(`[${MODULE_NAME}] Timed out waiting for stop button`);
@@ -104,6 +101,8 @@ function stopGenerationWhenReady() {
 
 /**
  * Send a quiet prompt to the API to keep the cache alive.
+ * The cache is warmed when Claude processes the prompt (before generation completes).
+ * We wait for the response to start, then stop after 1 second to save tokens.
  */
 async function sendCacheRefresh() {
     const settings = getSettings();
@@ -133,18 +132,17 @@ async function sendCacheRefresh() {
     try {
         const { generateQuietPrompt } = getContext();
 
-        // Fire generation (don't await directly — we race it with the stop watcher)
+        // Fire generation without awaiting — we'll stop it early
         const genPromise = generateQuietPrompt({
             quietPrompt: settings.promptText,
-        }).catch(err => {
-            // Generation was likely aborted by our stop click — this is expected
-            console.debug(`[${MODULE_NAME}] Generation ended: ${err?.message || 'stopped'}`);
+        }).catch(() => {
+            // Abort error is expected when we click stop — silently ignore
         });
 
-        // Watch for the stop button and click it once the API starts responding
+        // Wait for the response to start streaming, then stop after 1s
         await stopGenerationWhenReady();
 
-        // Wait for the generation promise to fully settle
+        // Wait for the generation promise to settle (should resolve quickly after stop)
         await genPromise;
 
         pingCount++;
