@@ -1,0 +1,39 @@
+<div class="cache-refresh-settings">
+    <div class="inline-drawer">
+        <div class="inline-drawer-toggle inline-drawer-header">
+            <b>Cache Refresh</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+        </div>
+        <div class="inline-drawer-content">
+            <div class="cache_refresh_block">
+                <label class="checkbox_label" for="cache_refresh_enabled">
+                    <input id="cache_refresh_enabled" type="checkbox" />
+                    <span>Enable Cache Refresh</span>
+                </label>
+            </div>
+            <div class="cache_refresh_block">
+                <label for="cache_refresh_interval">
+                    <span>Refresh interval (seconds)</span>
+                </label>
+                <input id="cache_refresh_interval" class="text_pole" type="number" min="10" max="600" value="240" />
+                <small>Claude's cache TTL is 5 minutes. Default 240s (4 min) leaves a safe margin.</small>
+            </div>
+            <div class="cache_refresh_block">
+                <label for="cache_refresh_max_pings">
+                    <span>Max pings (0 = unlimited)</span>
+                </label>
+                <input id="cache_refresh_max_pings" class="text_pole" type="number" min="0" max="100000" value="0" />
+            </div>
+            <div class="cache_refresh_block">
+                <label for="cache_refresh_prompt">
+                    <span>Prompt text</span>
+                </label>
+                <textarea id="cache_refresh_prompt" class="text_pole" rows="2" placeholder="Continue."></textarea>
+            </div>
+            <hr />
+            <div class="cache_refresh_block">
+                <span>Pings sent: <strong id="cache_refresh_counter">0</strong></span>
+            </div>
+        </div>
+    </div>
+</div>
