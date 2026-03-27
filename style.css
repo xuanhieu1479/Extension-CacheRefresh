@@ -11,8 +11,8 @@
 
 #cache_refresh_badge {
     position: fixed;
-    top: 25px;
-    right: 25px;
+    top: 45px;
+    left: calc(22.5vw + 5px);
     z-index: 1000;
     background: var(--SmartThemeQuoteColor, #4CAF50);
     color: #ffffff;
