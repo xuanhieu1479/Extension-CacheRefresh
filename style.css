@@ -11,14 +11,14 @@
 
 #cache_refresh_badge {
     position: fixed;
-    bottom: 75px;
+    top: 25px;
     right: 25px;
     z-index: 1000;
     background: var(--SmartThemeQuoteColor, #4CAF50);
-    color: var(--SmartThemeBodyColor, #fff);
+    color: #ffffff;
     border-radius: 12px;
-    padding: 2px 10px;
-    font-size: 12px;
+    padding: 4px 14px;
+    font-size: 16px;
     font-weight: bold;
     cursor: default;
     display: none;
