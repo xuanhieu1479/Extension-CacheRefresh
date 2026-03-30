@@ -5,7 +5,9 @@
       "WebFetch(domain:docs.sillytavern.app)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:raw.githubusercontent.com)",
-      "Bash(where gh:*)"
+      "Bash(where gh:*)",
+      "Bash(find C:UsersHieuPhamDesktopSillyTavern -type f -name *idle*)",
+      "Bash(grep:*)"
     ]
   }
 }

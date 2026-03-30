@@ -1,6 +1,8 @@
 import { event_types, eventSource, saveSettingsDebounced } from '../../../../script.js';
 import { debounce } from '../../../utils.js';
 import { extension_settings, getContext, renderExtensionTemplateAsync } from '../../../extensions.js';
+import { SlashCommandParser } from '../../../slash-commands/SlashCommandParser.js';
+import { SlashCommand } from '../../../slash-commands/SlashCommand.js';
 
 const MODULE_NAME = 'cache_refresh';
 const extensionName = 'third-party/Extension-CacheRefresh';
@@ -220,10 +222,28 @@ function setupListeners() {
     $('#cache_refresh_enabled').on('input', debounce(handleToggle, 250));
 }
 
+function registerSlashCommands() {
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'cache-refresh',
+        callback: async () => {
+            const settings = getSettings();
+            settings.enabled = !settings.enabled;
+            $('#cache_refresh_enabled').prop('checked', settings.enabled);
+            saveSettingsDebounced();
+            handleToggle();
+            const state = settings.enabled ? 'enabled' : 'disabled';
+            toastr.info(`Cache Refresh ${state}`);
+            return state;
+        },
+        helpString: 'Toggle Cache Refresh on/off.',
+    }));
+}
+
 jQuery(async () => {
     await loadSettingsHTML();
     await loadSettings();
     setupListeners();
+    registerSlashCommands();
 
     if (getSettings().enabled) {
         resetTimer();
