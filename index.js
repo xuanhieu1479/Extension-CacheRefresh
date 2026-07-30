@@ -75,36 +75,9 @@ function resetTimer() {
 }
 
 /**
- * Wait for the stop button to appear (meaning the API has started responding
- * and the cache is warmed), then stop generation after a 1-second safety margin.
- */
-function stopGenerationWhenReady() {
-    return new Promise(resolve => {
-        const maxWait = 30000;
-        const startTime = Date.now();
-
-        const check = setInterval(() => {
-            if ($('#mes_stop').is(':visible')) {
-                clearInterval(check);
-                // Wait 1 second after response starts to ensure cache is fully warmed
-                setTimeout(() => {
-                    $('#mes_stop').trigger('click');
-                    console.debug(`[${MODULE_NAME}] Stopped generation 1s after response started`);
-                    resolve(true);
-                }, 1000);
-            } else if (Date.now() - startTime > maxWait) {
-                clearInterval(check);
-                console.debug(`[${MODULE_NAME}] Timed out waiting for stop button`);
-                resolve(false);
-            }
-        }, 200);
-    });
-}
-
-/**
  * Send a quiet prompt to the API to keep the cache alive.
- * The cache is warmed when Claude processes the prompt (before generation completes).
- * We wait for the response to start, then stop after 1 second to save tokens.
+ * Uses minimal responseLength so the request completes (ensuring cache is written)
+ * while generating only a few tokens.
  */
 async function sendCacheRefresh() {
     const settings = getSettings();
@@ -134,19 +107,11 @@ async function sendCacheRefresh() {
     try {
         const { generateQuietPrompt } = getContext();
 
-        // Let generation complete fully to ensure cache is written
+        // Use minimal responseLength so request completes (cache written) but few tokens generated
         await generateQuietPrompt({
             quietPrompt: settings.promptText,
+            responseLength: 16,
         });
-
-        // DISABLED: Early stopping - may prevent cache from being committed
-        // const genPromise = generateQuietPrompt({
-        //     quietPrompt: settings.promptText,
-        // }).catch(() => {
-        //     // Abort error is expected when we click stop — silently ignore
-        // });
-        // await stopGenerationWhenReady();
-        // await genPromise;
 
         pingCount++;
         updateCounterDisplay();
