@@ -15,7 +15,7 @@ const defaultSettings = Object.freeze({
     enabled: false,
     interval: 240,
     maxPings: 0,
-    promptText: 'This is just a ping to warm the cache.',
+    promptText: 'Continue.',
 });
 
 /**
@@ -107,10 +107,8 @@ async function sendCacheRefresh() {
     try {
         const { generateQuietPrompt } = getContext();
 
-        // Use loud mode (foreground) which may trigger proper caching on direct Claude API
         await generateQuietPrompt({
             quietPrompt: settings.promptText,
-            quietToLoud: true,
             responseLength: 16,
         });
 
