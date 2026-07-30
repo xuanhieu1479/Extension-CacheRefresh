@@ -15,7 +15,7 @@ const defaultSettings = Object.freeze({
     enabled: false,
     interval: 240,
     maxPings: 0,
-    promptText: 'Continue.',
+    promptText: 'This is just a ping to warm the cache.',
 });
 
 /**
@@ -134,18 +134,19 @@ async function sendCacheRefresh() {
     try {
         const { generateQuietPrompt } = getContext();
 
-        // Fire generation without awaiting — we'll stop it early
-        const genPromise = generateQuietPrompt({
+        // Let generation complete fully to ensure cache is written
+        await generateQuietPrompt({
             quietPrompt: settings.promptText,
-        }).catch(() => {
-            // Abort error is expected when we click stop — silently ignore
         });
 
-        // Wait for the response to start streaming, then stop after 1s
-        await stopGenerationWhenReady();
-
-        // Wait for the generation promise to settle (should resolve quickly after stop)
-        await genPromise;
+        // DISABLED: Early stopping - may prevent cache from being committed
+        // const genPromise = generateQuietPrompt({
+        //     quietPrompt: settings.promptText,
+        // }).catch(() => {
+        //     // Abort error is expected when we click stop — silently ignore
+        // });
+        // await stopGenerationWhenReady();
+        // await genPromise;
 
         pingCount++;
         updateCounterDisplay();
