@@ -107,9 +107,10 @@ async function sendCacheRefresh() {
     try {
         const { generateQuietPrompt } = getContext();
 
-        // Use minimal responseLength so request completes (cache written) but few tokens generated
+        // Use loud mode (foreground) which may trigger proper caching on direct Claude API
         await generateQuietPrompt({
             quietPrompt: settings.promptText,
+            quietToLoud: true,
             responseLength: 16,
         });
 
