@@ -109,7 +109,6 @@ async function sendCacheRefresh() {
 
         await generateQuietPrompt({
             quietPrompt: settings.promptText,
-            responseLength: 16,
         });
 
         pingCount++;
