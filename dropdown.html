@@ -24,7 +24,12 @@
                 </label>
                 <input id="cache_refresh_max_pings" class="text_pole" type="number" min="0" max="100000" value="0" />
             </div>
-            <small>Tip: Create a Prompt with the "quiet" trigger to customize the refresh message.</small>
+            <div class="cache_refresh_block">
+                <label for="cache_refresh_prompt">
+                    <span>Prompt text</span>
+                </label>
+                <textarea id="cache_refresh_prompt" class="text_pole" rows="2" placeholder="Continue."></textarea>
+            </div>
             <hr />
             <div class="cache_refresh_block">
                 <span>Pings sent: <strong id="cache_refresh_counter">0</strong></span>

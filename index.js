@@ -15,6 +15,7 @@ const defaultSettings = Object.freeze({
     enabled: false,
     interval: 240,
     maxPings: 0,
+    promptText: 'Continue.',
 });
 
 /**
@@ -41,6 +42,7 @@ function populateUI() {
     $('#cache_refresh_enabled').prop('checked', s.enabled);
     $('#cache_refresh_interval').val(s.interval);
     $('#cache_refresh_max_pings').val(s.maxPings);
+    $('#cache_refresh_prompt').val(s.promptText);
     updateCounterDisplay();
 }
 
@@ -106,7 +108,7 @@ async function sendCacheRefresh() {
         const { generateQuietPrompt } = getContext();
 
         await generateQuietPrompt({
-            quietPrompt: 'Continue.',
+            quietPrompt: settings.promptText,
         });
 
         pingCount++;
@@ -176,6 +178,7 @@ function setupListeners() {
         ['cache_refresh_enabled', 'enabled', true],
         ['cache_refresh_interval', 'interval'],
         ['cache_refresh_max_pings', 'maxPings'],
+        ['cache_refresh_prompt', 'promptText'],
     ];
 
     settings.forEach(s => attachUpdateListener(...s));
