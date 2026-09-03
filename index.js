@@ -141,9 +141,11 @@ function handleToggle() {
     if (settings.enabled) {
         resetTimer();
         eventSource.on(event_types.MESSAGE_SENT, onUserMessage);
+        eventSource.on(event_types.MESSAGE_SWIPED, onUserMessage);
     } else {
         if (refreshTimer) clearTimeout(refreshTimer);
         eventSource.removeListener(event_types.MESSAGE_SENT, onUserMessage);
+        eventSource.removeListener(event_types.MESSAGE_SWIPED, onUserMessage);
         pingCount = 0;
         updateCounterDisplay();
     }
@@ -212,5 +214,6 @@ jQuery(async () => {
     if (getSettings().enabled) {
         resetTimer();
         eventSource.on(event_types.MESSAGE_SENT, onUserMessage);
+        eventSource.on(event_types.MESSAGE_SWIPED, onUserMessage);
     }
 });
