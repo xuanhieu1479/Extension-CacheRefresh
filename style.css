@@ -4,6 +4,21 @@
     margin-bottom: 8px;
 }
 
+.cache_refresh_row {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+
+#cache_refresh_now {
+    flex-direction: row;
+    gap: 6px;
+    white-space: nowrap;
+    width: auto;
+    margin: 0;
+    padding: 4px 12px;
+}
+
 .cache_refresh_block small {
     opacity: 0.6;
     margin-top: 2px;
