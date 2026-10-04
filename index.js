@@ -78,14 +78,18 @@ function resetTimer() {
  * Send a quiet prompt to the API to keep the cache alive.
  * Uses minimal responseLength so the request completes (ensuring cache is written)
  * while generating only a few tokens.
+ * A manual refresh ignores the enabled/max-pings checks and resets the counter to 0.
  */
-async function sendCacheRefresh() {
+async function sendCacheRefresh(manual = false) {
     const settings = getSettings();
-    if (!settings.enabled) return;
-    if (isRefreshing) return;
+    if (!manual && !settings.enabled) return;
+    if (isRefreshing) {
+        if (manual) toastr.info('A cache refresh is already in progress.');
+        return;
+    }
 
     // Check max pings (0 = unlimited)
-    if (settings.maxPings > 0 && pingCount >= settings.maxPings) {
+    if (!manual && settings.maxPings > 0 && pingCount >= settings.maxPings) {
         console.debug(`[${MODULE_NAME}] Max pings reached (${settings.maxPings})`);
         return;
     }
@@ -93,12 +97,23 @@ async function sendCacheRefresh() {
     // Don't interrupt an ongoing generation
     if ($('#mes_stop').is(':visible')) {
         console.debug(`[${MODULE_NAME}] Generation in progress, skipping ping`);
+        if (manual) toastr.info('Generation in progress, try again after it finishes.');
         resetTimer();
         return;
     }
 
+    if (manual) {
+        const context = getContext();
+        if (!context.characterId && !context.groupId) {
+            toastr.warning('Open a chat before refreshing the cache.');
+            return;
+        }
+        // Stop the pending auto ping; resetTimer() restarts the countdown afterwards
+        if (refreshTimer) clearTimeout(refreshTimer);
+    }
+
     isRefreshing = true;
-    console.log(`[${MODULE_NAME}] Sending cache refresh ping #${pingCount + 1}`);
+    console.log(`[${MODULE_NAME}] Sending ${manual ? 'manual cache refresh' : `cache refresh ping #${pingCount + 1}`}`);
 
     // Pulse the badge
     $('#cache_refresh_badge').addClass('pinging');
@@ -111,11 +126,19 @@ async function sendCacheRefresh() {
             quietPrompt: settings.promptText,
         });
 
-        pingCount++;
-        updateCounterDisplay();
-        console.log(`[${MODULE_NAME}] Cache refresh ping #${pingCount} complete`);
+        if (manual) {
+            pingCount = 0;
+            updateCounterDisplay();
+            console.log(`[${MODULE_NAME}] Manual cache refresh complete, counter reset`);
+            toastr.success('Cache refreshed.');
+        } else {
+            pingCount++;
+            updateCounterDisplay();
+            console.log(`[${MODULE_NAME}] Cache refresh ping #${pingCount} complete`);
+        }
     } catch (err) {
         console.error(`[${MODULE_NAME}] Error during cache refresh:`, err);
+        if (manual) toastr.error('Cache refresh failed: ' + err.message);
     } finally {
         isRefreshing = false;
         resetTimer();
@@ -186,6 +209,7 @@ function setupListeners() {
     settings.forEach(s => attachUpdateListener(...s));
 
     $('#cache_refresh_enabled').on('input', debounce(handleToggle, 250));
+    $('#cache_refresh_now').on('click', () => sendCacheRefresh(true));
 }
 
 function registerSlashCommands() {
