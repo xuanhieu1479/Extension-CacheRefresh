@@ -38,32 +38,6 @@
     cursor: default;
     display: none;
     opacity: 0.8;
-    overflow: hidden;
-    font-variant-numeric: tabular-nums;
-}
-
-#cache_refresh_badge .cache_refresh_badge_time {
-    margin-left: 8px;
-    font-weight: normal;
-    opacity: 0.9;
-}
-
-#cache_refresh_badge .cache_refresh_badge_bar {
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    height: 3px;
-    width: 0;
-    background: rgba(255, 255, 255, 0.85);
-    transition: width 1s linear;
-}
-
-#cache_refresh_badge.soon .cache_refresh_badge_bar {
-    background: #ffcc00;
-}
-
-#cache_refresh_countdown {
-    font-variant-numeric: tabular-nums;
 }
 
 #cache_refresh_badge:hover {
