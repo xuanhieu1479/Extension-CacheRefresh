@@ -60,8 +60,11 @@ function updateCounterDisplay() {
 
 /**
  * Reset the refresh timer. Called after pings and user messages.
+ * Claude's cache lifetime runs from when a request is sent, not when its reply finishes,
+ * so the interval is counted from `sentAt` (default: now) and reply time is subtracted.
+ * @param {number} [sentAt] Timestamp (ms) when the request that refreshed the cache was sent
  */
-function resetTimer() {
+function resetTimer(sentAt = Date.now()) {
     if (refreshTimer) clearTimeout(refreshTimer);
 
     const context = getContext();
@@ -70,8 +73,9 @@ function resetTimer() {
     const settings = getSettings();
     if (!settings.enabled) return;
 
-    refreshTimer = setTimeout(sendCacheRefresh, settings.interval * 1000);
-    console.debug(`[${MODULE_NAME}] Timer set for ${settings.interval}s`);
+    const delay = Math.max(0, settings.interval * 1000 - (Date.now() - sentAt));
+    refreshTimer = setTimeout(sendCacheRefresh, delay);
+    console.debug(`[${MODULE_NAME}] Timer set for ${Math.round(delay / 1000)}s`);
 }
 
 /**
@@ -119,6 +123,9 @@ async function sendCacheRefresh(manual = false) {
     $('#cache_refresh_badge').addClass('pinging');
     setTimeout(() => $('#cache_refresh_badge').removeClass('pinging'), 800);
 
+    // The next ping is scheduled from this moment, not from when the reply finishes
+    const sentAt = Date.now();
+
     try {
         const { generateQuietPrompt } = getContext();
 
@@ -141,19 +148,48 @@ async function sendCacheRefresh(manual = false) {
         if (manual) toastr.error('Cache refresh failed: ' + err.message);
     } finally {
         isRefreshing = false;
-        resetTimer();
+        resetTimer(sentAt);
     }
 }
 
+/** Type of the generation currently being prepared ('normal', 'swipe', 'quiet', ...). */
+let pendingGenerationType = null;
+
 /**
- * When the user sends a message manually, reset the ping counter and timer.
- * The user's message already refreshes the cache, so we restart the countdown.
+ * GENERATION_STARTED fires at the start of every Generate() call, even ones that end up
+ * sending nothing (e.g. aborted by slash commands), so only remember the type here.
  */
-function onUserMessage() {
-    if (isRefreshing) return;
+function onGenerationStarted(type, _options, dryRun) {
+    if (dryRun) return;
+    pendingGenerationType = type;
+}
+
+/**
+ * GENERATE_AFTER_DATA fires once the prompt is built, right before the request is sent.
+ * Any real, non-quiet generation (send, empty send, swipe, regenerate, continue,
+ * impersonate...) refreshes the cache, so reset the ping counter and restart the countdown.
+ * Quiet prompts are skipped: our own pings schedule themselves, and other extensions'
+ * quiet prompts may not send the same prompt.
+ */
+function onGenerationRequest(_data, dryRun) {
+    if (dryRun) return;
+    const type = pendingGenerationType;
+    pendingGenerationType = null;
+    if (type === 'quiet' || isRefreshing) return;
     pingCount = 0;
     updateCounterDisplay();
     resetTimer();
+}
+
+function addGenerationListeners() {
+    removeGenerationListeners();
+    eventSource.on(event_types.GENERATION_STARTED, onGenerationStarted);
+    eventSource.on(event_types.GENERATE_AFTER_DATA, onGenerationRequest);
+}
+
+function removeGenerationListeners() {
+    eventSource.removeListener(event_types.GENERATION_STARTED, onGenerationStarted);
+    eventSource.removeListener(event_types.GENERATE_AFTER_DATA, onGenerationRequest);
 }
 
 /**
@@ -163,12 +199,10 @@ function handleToggle() {
     const settings = getSettings();
     if (settings.enabled) {
         resetTimer();
-        eventSource.on(event_types.MESSAGE_SENT, onUserMessage);
-        eventSource.on(event_types.MESSAGE_SWIPED, onUserMessage);
+        addGenerationListeners();
     } else {
         if (refreshTimer) clearTimeout(refreshTimer);
-        eventSource.removeListener(event_types.MESSAGE_SENT, onUserMessage);
-        eventSource.removeListener(event_types.MESSAGE_SWIPED, onUserMessage);
+        removeGenerationListeners();
         pingCount = 0;
         updateCounterDisplay();
     }
@@ -237,7 +271,6 @@ jQuery(async () => {
 
     if (getSettings().enabled) {
         resetTimer();
-        eventSource.on(event_types.MESSAGE_SENT, onUserMessage);
-        eventSource.on(event_types.MESSAGE_SWIPED, onUserMessage);
+        addGenerationListeners();
     }
 });

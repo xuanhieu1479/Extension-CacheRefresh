@@ -16,7 +16,7 @@
                     <span>Refresh interval (seconds)</span>
                 </label>
                 <input id="cache_refresh_interval" class="text_pole" type="number" min="10" max="600" value="240" />
-                <small>Claude's cache TTL is 5 minutes. Default 240s (4 min) leaves a safe margin.</small>
+                <small>Claude's cache TTL is 5 minutes, counted from when each request is sent. Default 240s (4 min) leaves a safe margin.</small>
             </div>
             <div class="cache_refresh_block">
                 <label for="cache_refresh_max_pings">
