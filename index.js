@@ -10,6 +10,11 @@ const extensionName = 'third-party/Extension-CacheRefresh';
 let refreshTimer = null;
 let pingCount = 0;
 let isRefreshing = false;
+/** Timestamp (ms) when the next auto ping fires, or null when none is scheduled. */
+let nextPingAt = null;
+/** Full length (ms) of the current countdown, for the badge progress bar. */
+let countdownTotal = 0;
+let countdownTicker = null;
 
 const defaultSettings = Object.freeze({
     enabled: false,
@@ -46,16 +51,64 @@ function populateUI() {
     updateCounterDisplay();
 }
 
+function formatCountdown(ms) {
+    const total = Math.ceil(ms / 1000);
+    const m = Math.floor(total / 60);
+    const sec = String(total % 60).padStart(2, '0');
+    return `${m}:${sec}`;
+}
+
+/** Text describing the countdown state, shared by the badge and the settings panel. */
+function getCountdownText() {
+    if (isRefreshing) return 'pinging…';
+    if (nextPingAt === null) {
+        const { maxPings } = getSettings();
+        if (maxPings > 0 && pingCount >= maxPings) return 'max reached';
+        return '–:––';
+    }
+    return formatCountdown(Math.max(0, nextPingAt - Date.now()));
+}
+
 function updateCounterDisplay() {
+    const countdown = getCountdownText();
     $('#cache_refresh_counter').text(pingCount);
+    $('#cache_refresh_countdown').text(countdown);
+
     const badge = $('#cache_refresh_badge');
-    badge.text(`⟳ ${pingCount}`);
+    badge.find('.cache_refresh_badge_count').text(`⟳ ${pingCount}`);
+    badge.find('.cache_refresh_badge_time').text(countdown);
+
+    // Progress bar drains as the next ping approaches
+    let fraction = 0;
+    if (nextPingAt !== null && countdownTotal > 0) {
+        fraction = Math.min(1, Math.max(0, (nextPingAt - Date.now()) / countdownTotal));
+    }
+    badge.find('.cache_refresh_badge_bar').css('width', `${fraction * 100}%`);
+    badge.toggleClass('soon', nextPingAt !== null && nextPingAt - Date.now() <= 30000);
 
     if (getSettings().enabled) {
         badge.show();
     } else {
         badge.hide();
     }
+}
+
+/** Mark the countdown as idle (no ping scheduled) and stop the display ticker. */
+function clearCountdown() {
+    nextPingAt = null;
+    countdownTotal = 0;
+    if (countdownTicker) {
+        clearInterval(countdownTicker);
+        countdownTicker = null;
+    }
+    updateCounterDisplay();
+}
+
+function startCountdown(delay) {
+    nextPingAt = Date.now() + delay;
+    countdownTotal = getSettings().interval * 1000;
+    if (!countdownTicker) countdownTicker = setInterval(updateCounterDisplay, 1000);
+    updateCounterDisplay();
 }
 
 /**
@@ -66,6 +119,8 @@ function updateCounterDisplay() {
  */
 function resetTimer(sentAt = Date.now()) {
     if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = null;
+    clearCountdown();
 
     const context = getContext();
     if (!context.characterId && !context.groupId) return;
@@ -73,8 +128,12 @@ function resetTimer(sentAt = Date.now()) {
     const settings = getSettings();
     if (!settings.enabled) return;
 
+    // Nothing left to send once the ping limit is hit; a real generation or manual refresh restarts it
+    if (settings.maxPings > 0 && pingCount >= settings.maxPings) return;
+
     const delay = Math.max(0, settings.interval * 1000 - (Date.now() - sentAt));
     refreshTimer = setTimeout(sendCacheRefresh, delay);
+    startCountdown(delay);
     console.debug(`[${MODULE_NAME}] Timer set for ${Math.round(delay / 1000)}s`);
 }
 
@@ -117,6 +176,7 @@ async function sendCacheRefresh(manual = false) {
     }
 
     isRefreshing = true;
+    clearCountdown();
     console.log(`[${MODULE_NAME}] Sending ${manual ? 'manual cache refresh' : `cache refresh ping #${pingCount + 1}`}`);
 
     // Pulse the badge
@@ -202,9 +262,10 @@ function handleToggle() {
         addGenerationListeners();
     } else {
         if (refreshTimer) clearTimeout(refreshTimer);
+        refreshTimer = null;
         removeGenerationListeners();
         pingCount = 0;
-        updateCounterDisplay();
+        clearCountdown();
     }
 }
 
@@ -229,7 +290,12 @@ async function loadSettingsHTML() {
     getContainer().append(settingsHtml);
 
     // Add floating badge to the page
-    $('body').append('<div id="cache_refresh_badge" title="Cache Refresh ping count"></div>');
+    $('body').append(`
+        <div id="cache_refresh_badge" title="Cache Refresh: pings sent · time until next ping">
+            <span class="cache_refresh_badge_count"></span>
+            <span class="cache_refresh_badge_time"></span>
+            <div class="cache_refresh_badge_bar"></div>
+        </div>`);
 }
 
 function setupListeners() {
